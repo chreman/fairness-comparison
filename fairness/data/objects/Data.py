@@ -1,3 +1,4 @@
+import itertools
 import pandas as pd
 import os
 
@@ -126,3 +127,28 @@ class Data():
         """
         return dataframe
 
+    def get_subgroup_ratios(self):
+        """
+        Constructs combinations of sensitive attribute expressions,
+        and returns a dataframe with the probability mass of each subgroup.
+        """
+        df = self.load_raw_dataset()
+        sensitive_attrs = self.get_sensitive_attributes()
+        subgroups = []
+        if len(sensitive_attrs) == 1:
+            for expr in df[sensitive_attrs[0]].unique():
+                tmp = {}
+                tmp[sensitive_attrs[0]] = expr
+                tmp['ratio'] = df[sensitive_attrs].where(df[sensitive_attrs[0]] == expr).count()[sensitive_attrs[0]]/len(df)
+                subgroups.append(tmp)
+        if len(sensitive_attrs) == 2:
+            for expr1, expr2 in list(itertools.product(df[sensitive_attrs[0]].unique(),
+                                                       df[sensitive_attrs[1]].unique())):
+                tmp = {}
+                tmp[sensitive_attrs[0]] = expr1
+                tmp[sensitive_attrs[1]] = expr2
+                tmp['ratio'] = (df[sensitive_attrs].where(df[sensitive_attrs[0]] == expr1)
+                                                   .where(df[sensitive_attrs[1]] == expr2)
+                                                   .count()[sensitive_attrs[0]]/len(df))
+                subgroups.append(tmp)
+        return pd.DataFrame(subgroups)
