@@ -10,7 +10,31 @@ from fairness.data.objects.list import DATASETS, get_dataset_names
 from fairness.data.objects.ProcessedData import TAGS
 
 # The graphs to generate: (xaxis measure, yaxis measure)
-GRAPHS = [('DIbinary', 'accuracy'), ('sex-TPR', 'sex-calibration-')]
+GRAPHS = [('DIbinary', 'accuracy'), ('sex-TPR', 'sex-calibration-'),
+          ('Subgroups: race-accuracy', 'accuracy'),
+          ('Subgroups: sex-accuracy', 'accuracy'),
+          ('Subgroups: race-sex-accuracy', 'accuracy'),
+          ('Subgroups: sex-TPR', 'sex-TPR'),
+          ('Subgroups: race-sex-TPR', 'race-sex-TPR'),
+          ('Subgroups: race-TNR', 'race-TNR'),
+          ('Subgroups: sex-TNR', 'sex-TNR'),
+          ('Subgroups: race-sex-TNR', 'race-sex-TNR'),
+          ('Subgroups: race-BCR', 'race-BCR'),
+          ('Subgroups: sex-BCR', 'sex-BCR'),
+          ('Subgroups: race-sex-BCR', 'race-sex-BCR'),
+          ('Subgroups: race-MCC', 'race-MCC'),
+          ('Subgroups: sex-MCC', 'sex-MCC'),
+          ('Subgroups: race-sex-MCC', 'race-sex-MCC'),
+          ('Subgroups: race-DIbinary', 'race-DIbinary'),
+          ('Subgroups: sex-DIbinary', 'sex-DIbinary'),
+          ('Subgroups: race-sex-DIbinary', 'race-sex-DIbinary'),
+          ('Subgroups: race-DIavgall', 'race-DIavgall'),
+          ('Subgroups: sex-DIavgall', 'sex-DIavgall'),
+          ('Subgroups: race-sex-DIavgall', 'race-sex-DIavgall'),
+          ('Subgroups: race-CV', 'race-CV'),
+          ('Subgroups: sex-CV', 'sex-CV'),
+          ('Subgroups: race-sex-CV', 'race-sex-CV')]
+
 
 def run(dataset = get_dataset_names(), graphs = GRAPHS):
     for dataset_obj in DATASETS:
@@ -25,7 +49,8 @@ def run(dataset = get_dataset_names(), graphs = GRAPHS):
                 make_all_graphs(filename, graphs)
     print("Generating additional figures in R...")
     subprocess.run(["Rscript",
-                    "results/generate-report.R"])
+                    "fairness/results/generate-report.R"])
+
 
 def make_all_graphs(filename, graphs):
     try:
@@ -35,12 +60,13 @@ def make_all_graphs(filename, graphs):
        return
     else:
         o = pathlib.Path(filename).parts[-1].split('.')[0]
- 
+
         if graphs == 'all':
             graphs = all_possible_graphs(f)
- 
+
         for xaxis, yaxis in graphs:
             generate_graph(f, xaxis, yaxis, o)
+
 
 def all_possible_graphs(f):
     graphs = []
@@ -49,6 +75,7 @@ def all_possible_graphs(f):
         for j, m2 in enumerate(measures):
              graphs.append( (m1, m2) )
     return graphs
+
 
 def generate_graph(f, xaxis_measure, yaxis_measure, title):
     try:
@@ -62,15 +89,15 @@ def generate_graph(f, xaxis_measure, yaxis_measure, title):
         if len(col1) == 0:
             print("Skipping graph containing no data:" + title)
             return
- 
+
         if col1[0] == 'None':
             print("Skipping missing column %s" % xaxis_measure)
             return
- 
+
         if col2[0] == 'None':
             print("Skipping missing column %s" % yaxis_measure)
             return
- 
+
         pathlib.Path("results/analysis/%s" % title).mkdir(parents=True, exist_ok=True)
         # scale = scale_color_brewer(type='qual', palette=1)
         # d3.schemeCategory20
@@ -91,7 +118,7 @@ def generate_graph(f, xaxis_measure, yaxis_measure, title):
 
 def generate_rmd_output():
     subprocess.run(["Rscript",
-                    "results/generate-report.R"])
+                    "fairness/results/generate-report.R"])
 
 def main():
     fire.Fire(run)

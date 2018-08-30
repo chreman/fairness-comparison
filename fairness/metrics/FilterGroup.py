@@ -1,5 +1,5 @@
 from fairness.metrics.Metric import Metric
-
+import pandas as pd
 
 class FilterGroup(Metric):
     def __init__(self, metric):
@@ -8,13 +8,15 @@ class FilterGroup(Metric):
         self.name = metric.get_name()
 
     def calc(self, actual, predicted, dict_of_sensitive_lists, single_sensitive_name,
-             unprotected_vals, positive_pred):
+             unprotected_vals, positive_pred,
+             algorithm=None, dataset=None, tag=None):
 
         # print("unprotected_vals", unprotected_vals)
         # print("sensitive_for_metric", self.sensitive_for_metric)
         sensitive = dict_of_sensitive_lists[self.sensitive_for_metric]
         sg_metrics = []
         # print("protected_vals", set(sensitive))
+        dfs = []
         for sens_expr in set(sensitive):
             # print(sens_expr)
             # make for loop here - for each sens_val do calc
@@ -54,6 +56,16 @@ class FilterGroup(Metric):
                                          single_sensitive_name,
                                          unprotected_vals, positive_pred)
             sg_metrics.append(sg_metric)
+            dfs.append(pd.DataFrame.from_dict({
+                                     "algorithm": algorithm,
+                                     "dataset": dataset,
+                                     "metric_name": self.name,
+                                     "tag": tag,
+                                     "subgroup": sens_expr,
+                                     "metric": sg_metric}, orient='index').T)
+        df = pd.concat(dfs)
+        df.to_csv("results/sg_metrics/" + "_".join(["sg_metric", dataset, algorithm, tag])+".csv",
+                  mode="a")
         return max(sg_metrics)
 
     def set_subgroup_sensitive(self, sensitive_name):

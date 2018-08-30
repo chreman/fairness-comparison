@@ -1,2 +1,2 @@
 library('rmarkdown')
-rmarkdown::render('results/main-analysis.Rmd')
+rmarkdown::render('fairness/results/main-analysis.Rmd')

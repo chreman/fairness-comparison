@@ -17,13 +17,19 @@ from fairness.metrics.MCC import MCC
 from fairness.metrics.SensitiveMetric import SensitiveMetric
 from fairness.metrics.TNR import TNR
 from fairness.metrics.TPR import TPR
+from fairness.metrics.SubgroupMetric import SubgroupMetric
 
 
 METRICS = [ Accuracy(), TPR(), TNR(), BCR(), MCC(),        # accuracy metrics
             DIBinary(), DIAvgAll(), CV(),                  # fairness metrics
             SensitiveMetric(Accuracy), SensitiveMetric(TPR), SensitiveMetric(TNR),
             SensitiveMetric(FPR), SensitiveMetric(FNR),
-            SensitiveMetric(CalibrationPos), SensitiveMetric(CalibrationNeg) ]
+            SensitiveMetric(CalibrationPos), SensitiveMetric(CalibrationNeg),
+            SubgroupMetric(Accuracy), SubgroupMetric(TPR), SubgroupMetric(TNR), SubgroupMetric(BCR), SubgroupMetric(MCC),
+            SubgroupMetric(DIBinary), SubgroupMetric(DIAvgAll), SubgroupMetric(CV),
+            SubgroupMetric(CalibrationNeg), SubgroupMetric(CalibrationPos)
+            ]
+
 
 def get_metrics(dataset, sensitive_dict, tag):
     """

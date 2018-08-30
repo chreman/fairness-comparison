@@ -18,12 +18,14 @@ class SubgroupMetric(Metric):
         self.name = self.metric().get_name()   # to be modified as this metric is expanded
 
     def calc(self, actual, predicted, dict_of_sensitive_lists, single_sensitive_name,
-             unprotected_vals, positive_pred):
+             unprotected_vals, positive_pred,
+             algorithm=None, dataset=None, tag=None):
         "modified to calculate metric first for each subgroup and then take max"
         sgfilter = FilterGroup(self.metric())
         sgfilter.set_subgroup_sensitive(self.sensitive_attr)
         return sgfilter.calc(actual, predicted, dict_of_sensitive_lists, single_sensitive_name,
-                             unprotected_vals, positive_pred)
+                             unprotected_vals, positive_pred,
+                             algorithm, dataset, tag)
 
     def expand_per_dataset(self, dataset, sensitive_dict, tag):
         objects_list = []

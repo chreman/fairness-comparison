@@ -7,6 +7,7 @@ from fairness.data.objects.list import DATASETS, get_dataset_names
 from fairness.data.objects.ProcessedData import ProcessedData
 from fairness.algorithms.list import ALGORITHMS
 from fairness.metrics.list import get_metrics
+from fairness.metrics.SubgroupMetric import SubgroupMetric
 
 from fairness.algorithms.ParamGridSearch import ParamGridSearch
 
@@ -117,8 +118,13 @@ def run_eval_alg(algorithm, train, test, dataset, processed_data, all_sensitive_
     sensitive_dict = processed_data.get_sensitive_values(tag)
     one_run_results = []
     for metric in get_metrics(dataset, sensitive_dict, tag):
-        result = metric.calc(actual, predicted, dict_sensitive_lists, single_sensitive,
-                             privileged_vals, positive_val)
+        if isinstance(metric, SubgroupMetric):
+            result = metric.calc(actual, predicted, dict_sensitive_lists, single_sensitive,
+                                 privileged_vals, positive_val,
+                                 algorithm.get_name(), dataset.get_dataset_name(), tag)
+        else:
+            result = metric.calc(actual, predicted, dict_sensitive_lists, single_sensitive,
+                                 privileged_vals, positive_val)
         one_run_results.append(result)
 
     # handling the set of predictions returned by ParamGridSearch
