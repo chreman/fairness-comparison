@@ -43,4 +43,4 @@ class SubgroupMetric(Metric):
         Set the attribute and value to filter, i.e., to calculate this metric for.
         """
         self.sensitive_attr = sensitive_name
-        self.name = "Subgroups: " + str(sensitive_name) + "-" + self.name
+        self.name = "SG:" + str(sensitive_name) + "-" + self.name

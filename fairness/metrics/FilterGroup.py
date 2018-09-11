@@ -57,15 +57,15 @@ class FilterGroup(Metric):
                                          unprotected_vals, positive_pred)
             sg_metrics.append(sg_metric)
             dfs.append(pd.DataFrame.from_dict({
-                                     "algorithm": algorithm,
                                      "dataset": dataset,
+                                     "algorithm": algorithm,
                                      "metric_name": self.name,
                                      "tag": tag,
                                      "subgroup": sens_expr,
                                      "metric": sg_metric}, orient='index').T)
         df = pd.concat(dfs)
-        df.to_csv("results/sg_metrics/" + "_".join(["sg_metric", dataset, algorithm, tag])+".csv",
-                  mode="a")
+        df.to_csv("results/sg_metrics/" + "_".join(["sg_metric", "results"])+".csv",
+                  mode="a", header=False)
         return max(sg_metrics)
 
     def set_subgroup_sensitive(self, sensitive_name):
