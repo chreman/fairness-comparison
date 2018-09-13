@@ -43,11 +43,10 @@ create_sensitivity_summary = function(df, x_var, y_var) {
   #y_mean_name = paste0("mean_", quo_name(quo_y_var))
   #x_sd_name = paste0("sd_", quo_name(quo_x_var))
   #y_sd_name = paste0("sd_", quo_name(quo_y_var))
-
-  sensitivity_summary = 
-    df %>% 
-    group_by(algorithm) %>% 
-    summarise(x_sd=sd(!!quo_x_var), x_mean=mean(!!quo_x_var), 
+  sensitivity_summary =
+    df %>%
+    group_by(algorithm) %>%
+    summarise(x_sd=sd(!!quo_x_var), x_mean=mean(!!quo_x_var),
               y_sd=sd(!!quo_y_var), y_mean=mean(!!quo_y_var))
   sensitivity_summary
 }
@@ -58,10 +57,10 @@ basic_sensitivity_plot = function(sensitivity_summary, x_var, y_var) {
 }
 
 plot_lines_sensitity_summary = function(basic_plot) {
-  basic_plot + 
+  basic_plot +
     geom_segment(aes(x=x_mean - x_sd, xend = x_mean + x_sd,
                      y=y_mean, yend = y_mean,
-                     colour=algorithm)) + 
+                     colour=algorithm)) +
     geom_segment(aes(x=x_mean, xend = x_mean,
                      y=y_mean - y_sd, yend = y_mean + y_sd,
                      colour=algorithm))
@@ -74,12 +73,12 @@ plot_ellipses_sensitity_summary = function(basic_plot) {
 plot_rects_sensitivity_summary = function(basic_plot) {
   aesthetics1 = aes(xmin = x_mean - 0.5 * x_sd,   
                    xmax = x_mean + 0.5 * x_sd,
-                   ymin = y_mean - 0.5 * y_sd, 
+                   ymin = y_mean - 0.5 * y_sd,
                    ymax = y_mean + 0.5 * y_sd,
                    fill=algorithm)
   aesthetics2 = aes(xmin = x_mean - 0.5 * x_sd,   
                    xmax = x_mean + 0.5 * x_sd,
-                   ymin = y_mean - 0.5 * y_sd, 
+                   ymin = y_mean - 0.5 * y_sd,
                    ymax = y_mean + 0.5 * y_sd,
                    colour=algorithm)
   basic_plot +
@@ -89,24 +88,24 @@ plot_rects_sensitivity_summary = function(basic_plot) {
 
 do_it_all = function(name, var1, var2, check.names=FALSE) {
   df = read.csv(str_c(name, ".csv"), check.names=check.names)
-  
+
   x_var = as.name(var1)
   y_var = as.name(var2)
 
   sensitivity_summary = create_sensitivity_summary(df, !!x_var, !!y_var)
 
   basic_plot = basic_sensitivity_plot(sensitivity_summary, !!x_var, !!y_var) + ggtitle(name)
-  
+
   plot_rects_sensitivity_summary(basic_plot)
 }
 
 nb_measure_comparison = function(name, measure) {
   num <- read.csv(str_c(name, "_numerical.csv"), check.names=FALSE)
   nbs <- read.csv(str_c(name, "_numerical-binsensitive.csv"), check.names=FALSE)
-  
+
   var1 <- as.name(str_c(measure, "-numerical"))
   var2 <- as.name(str_c(measure, "-binsensitive"))
-  
+
   df <- inner_join(num, nbs, by=c("algorithm", "run-id"), suffix = c("-numerical", "-binsensitive"))
   df$name = name
   df
@@ -126,25 +125,25 @@ plot_tradeoff = function(measure, dataset) {
   var1 <- as.name(str_c(measure, "-numerical"))
   var2 <- as.name(str_c(measure, "-binsensitive"))
   ggplot(df %>% filter(!(algorithm %in% c("LR", "SVM", "GaussianNB"))), aes_q(x=var1, y=var2, colour=quote(algorithm))) + catscale10 + catscale10_2 + geom_abline(a=0,b=1, colour="gray") +
-    geom_point() + ggtitle(str_c(dataset, ", measure: ", measure)) 
+    geom_point() + ggtitle(str_c(dataset, ", measure: ", measure))
 }
 
 # measure = "accuracy"
-p = plot_tradeoff("accuracy", "german_sex-age")
-print(p)
-ggsave("paper-figures/preprocessing-tradeoff-accuracy.png", p)
-
-p = plot_tradeoff("DIavgall", "german_sex-age")
-print(p)
-ggsave("paper-figures/preprocessing-tradeoff-DIavgall.png", p)
-
-p = plot_tradeoff("DIbinary", "german_sex-age")
-print(p)
-ggsave("paper-figures/preprocessing-tradeoff-DIbinary.png", p)
+# p = plot_tradeoff("accuracy", "german_sex-age")
+# print(p)
+# ggsave("paper-figures/preprocessing-tradeoff-accuracy.png", p)
+#
+# p = plot_tradeoff("DIavgall", "german_sex-age")
+# print(p)
+# ggsave("paper-figures/preprocessing-tradeoff-DIavgall.png", p)
+#
+# p = plot_tradeoff("DIbinary", "german_sex-age")
+# print(p)
+# ggsave("paper-figures/preprocessing-tradeoff-DIbinary.png", p)
 ```
 ```{r}
-p = plot_tradeoff("DIbinary", "german_sex-age")
-print(p)
+# p = plot_tradeoff("DIbinary", "german_sex-age")
+# print(p)
 ```
 
 ## Algorithm sensitivity
@@ -155,20 +154,21 @@ plot_sensitivity = function(df, var1, var2) {
   y_var = as.name(var2)
 
   sensitivity_summary = create_sensitivity_summary(df, !!x_var, !!y_var)
+  write.csv(sensitivity_summary, "sensummary.csv")
   basic_plot = basic_sensitivity_plot(sensitivity_summary, !!x_var, !!y_var)
   plot_rects_sensitivity_summary(basic_plot)
 }
 
 algos_to_plot = c(
-  "ZafarFairness", "Calders", "SVM", 
-  "Feldman-SVM", "DecisionTree", 
+  "ZafarFairness", "Calders", "SVM",
+  "Feldman-SVM", "DecisionTree",
   "Feldman-DecisionTree", "Kamishima")
 
 make_sensitivity_figure = function(name, var1="DIbinary", var2="accuracy") {
-  df = read.csv(name, check.names=TRUE) %>% 
-    filter(algorithm %in% algos_to_plot) %>% 
+  df = read.csv(name, check.names=TRUE) %>%
+    filter(algorithm %in% algos_to_plot) %>%
     mutate(algorithm=recode(algorithm, ZafarFairness="Zafar")) # rename to Zafar for clarity
-  
+  write.csv(head(df), "sensinput.csv")
   plot_sensitivity(df, var1, var2)
 }
 
@@ -202,7 +202,7 @@ Algorithms can state what their parameter grid search values are, since these ca
 ```{r}
 param_regex = "[01].[0-9]+"
 
-adult_race_params = read.csv("paramgrid-results/Feldman-SVM-DIavgall_adult_race_numerical-binsensitive.csv", stringsAsFactors = FALSE, check.names=TRUE) %>% 
+adult_race_params = read.csv("paramgrid-results/Feldman-SVM-DIavgall_adult_race_numerical-binsensitive.csv", stringsAsFactors = FALSE, check.names=TRUE) %>%
     mutate(lambda=as.numeric(str_extract(params, param_regex)))
 p = ggplot(adult_race_params, aes(x=DIavgall, y=accuracy, colour=lambda)) + geom_point() + ggtitle("Adult dataset, race attribute")
 print(p)
@@ -210,10 +210,10 @@ ggsave("paper-figures/adult_race_params_feldman.png", p)
 ```
 
 ```{r}
-ricci_race_params = read.csv("ricci_Race_numerical-binsensitive.csv", stringsAsFactors = FALSE, check.names=FALSE) 
+ricci_race_params = read.csv("ricci_Race_numerical-binsensitive.csv", stringsAsFactors = FALSE, check.names=FALSE)
 # ggplot(ricci_race_params, aes(x=DIavgall, y=`Race-calibration-`, colour=c)) + geom_point()
-#adult_race_params = read.csv("ZafarFairness-DIavgall_adult_race_numerical-binsensitive.csv", #stringsAsFactors = FALSE, check.names=TRUE) %>% 
-#  mutate(c=as.numeric(str_extract(params, param_regex))) %>% 
+#adult_race_params = read.csv("ZafarFairness-DIavgall_adult_race_numerical-binsensitive.csv", #stringsAsFactors = FALSE, check.names=TRUE) %>%
+#  mutate(c=as.numeric(str_extract(params, param_regex))) %>%
 #  filter(c>=0.01) # skip low range of parameter setting to avoid overweighting the correlation matrices
 
 p = ggplot(ricci_race_params, aes(x=DIavgall, y=accuracy, colour=algorithm)) + geom_point() + ggtitle("Ricci dataset, Race attribute")
@@ -226,7 +226,7 @@ ggsave("paper-figures/ricci_race_params_zafar.png", p)
 ```{r}
 compute_measure_correlation_matrix = function(df, measures) {
   cor(df[,measures])
-  
+
   # ignore robust correlation for now
   #m = matrix(0, nrow=length(measures), ncol=length(measures))
   # colnames(m) = measures
@@ -241,7 +241,7 @@ compute_measure_correlation_matrix = function(df, measures) {
   #      # some metrics have large outliers, which hoses a naive correlation calculation.
   #      # we'll use a robust correlation routine
   #      # we perturb the points minimally because otherwise robust:covRob crashes..
-  #      tdf <- data.frame(x=x+rnorm(length(x))*0.001, 
+  #      tdf <- data.frame(x=x+rnorm(length(x))*0.001,
   #                        y=y+rnorm(length(x))*0.001)
   #      if (cor(x, y) > 0.9999) {
   #        m[i, j] = cor(x, y)
@@ -264,13 +264,13 @@ For Ricci and Zafar:
 consistent_measures = c("DIbinary", "DIavgall", "CV", "TNR", "TPR", "accuracy", "BCR", "MCC")
 
 load_and_compute_combined_datasets = function(dataset_names, attribute) {
-  measures = c(consistent_measures[1:3], str_c(attribute, "-calibration-"), 
-   consistent_measures[-(1:3)], str_c(attribute, "-accuracy"), 
+  measures = c(consistent_measures[1:3], str_c(attribute, "-calibration-"),
+   consistent_measures[-(1:3)], str_c(attribute, "-accuracy"),
    "0-accuracy", "1-accuracy", str_c(attribute, "-calibration+"),
    str_c(attribute, "-TNR"), str_c(attribute, "-TPR"))
 
   datasets = lapply(dataset_names, function(dataset_name) {
-    dataset = read.csv(str_c(dataset_name, "_", attribute, "_numerical-binsensitive.csv"), stringsAsFactors = FALSE, check.names=FALSE) 
+    dataset = read.csv(str_c(dataset_name, "_", attribute, "_numerical-binsensitive.csv"), stringsAsFactors = FALSE, check.names=FALSE)
     reduced_dataset = dataset[,c(measures, "algorithm")]
     reduced_dataset$name = dataset_name
     reduced_dataset
@@ -278,8 +278,8 @@ load_and_compute_combined_datasets = function(dataset_names, attribute) {
   do.call(rbind, datasets)
 }
 load_and_compute_correlation_matrix = function(dataset_names, attribute) {
-  measures = c(consistent_measures[1:3], str_c(attribute, "-calibration-"), 
-   consistent_measures[-(1:3)], str_c(attribute, "-accuracy"), 
+  measures = c(consistent_measures[1:3], str_c(attribute, "-calibration-"),
+   consistent_measures[-(1:3)], str_c(attribute, "-accuracy"),
    "0-accuracy", "1-accuracy", str_c(attribute, "-calibration+"),
    str_c(attribute, "-TNR"), str_c(attribute, "-TPR"))
 
@@ -293,8 +293,8 @@ load_and_compute_correlation_matrix = function(dataset_names, attribute) {
 
 # ricci_measures
 #ricci_m = compute_measure_correlation_matrix(
-# ricci_race_params, 
-# c(consistent_measures[1:3], "Race-calibration-", 
+# ricci_race_params,
+# c(consistent_measures[1:3], "Race-calibration-",
 #   consistent_measures[-(1:3)], "Race-accuracy", "0-accuracy", "1-accuracy", "Race-calibration+",
 #   "Race-TNR", "Race-TPR"))
 
@@ -317,9 +317,9 @@ For Adult and Feldman-SVM:
 # adult_measures = subset(colnames(adult_race_params), numeric_columns)
 
 # adult_m = compute_measure_correlation_matrix(
-#   adult_race_params, 
+#   adult_race_params,
 #   c("X1.accuracy", "TPR", "race.TPR", "TNR", "X0.accuracy", "race.TNR", "race.calibration.", "BCR", "MCC", "accuracy", "race.accuracy", "race.calibration..1", "CV", "DIbinary", "DIavgall"))
-  #c(consistent_measures[1:3], "race.calibration..1", 
+  #c(consistent_measures[1:3], "race.calibration..1",
   #  consistent_measures[-(1:3)], "race.accuracy", "X0.accuracy", "X1.accuracy", "race.calibration.",
   #  "race.TPR", "race.TNR"))
 
@@ -339,7 +339,7 @@ race$repair = "race"
 sex$repair = "sex"
 both$repair = "both"
 
-df = rbind(race, sex, both) %>% 
+df = rbind(race, sex, both) %>%
   filter(algorithm %in% c("ZafarFairness", "Calders", "Kamishima", "Feldman-GaussianNB"))
 df$repair <- factor(df$repair, levels = c("race", "sex", "both"))
 p = ggplot(df, aes(x=DIavgall, y=accuracy, colour=repair)) + catscale10 + catscale10_2 + stat_ellipse(geom="polygon", level=0.5, alpha=0.1) + geom_point(alpha=0.3) + ggtitle("Adult dataset") + facet_wrap(~algorithm)
@@ -355,7 +355,7 @@ age$repair = "age"
 sex$repair = "sex"
 both$repair = "both"
 
-df = rbind(age, sex, both) %>% 
+df = rbind(age, sex, both) %>%
   filter(algorithm %in% c("ZafarFairness", "Calders", "Kamishima", "Feldman-SVM"))
 df$repair <- factor(df$repair, levels = c("age", "sex", "both"))
 
@@ -373,7 +373,7 @@ race$repair = "race"
 sex$repair = "sex"
 both$repair = "both"
 
-df = rbind(race, sex, both) %>% 
+df = rbind(race, sex, both) %>%
   filter(algorithm %in% c("ZafarFairness", "Calders", "Kamishima", "Feldman-GaussianNB"))
 df$repair <- factor(df$repair, levels = c("race", "sex", "both"))
 p = ggplot(df, aes(x=DIbinary, y=accuracy, colour=repair)) + catscale10 + catscale10_2 + stat_ellipse(geom="polygon", level=0.5, alpha=0.1) + geom_point(alpha=0.3) + ggtitle("Adult dataset") + facet_wrap(~algorithm)
@@ -382,11 +382,11 @@ ggsave("paper-figures/multiple_sensitive.png", p)
 ```
 
 ```{r}
-measure_names = c("DIbinary", "DIavgall", "CV", "TNR", "accuracy", "BCR", "MCC", 
+measure_names = c("DIbinary", "DIavgall", "CV", "TNR", "accuracy", "BCR", "MCC",
      "0-accuracy",
      "1-accuracy",
-     
-     "sensitive-accuracy", 
+
+     "sensitive-accuracy",
      "sensitive-calibration+",
      "sensitive-TNR",
      "sensitive-FNR",
@@ -394,14 +394,14 @@ measure_names = c("DIbinary", "DIavgall", "CV", "TNR", "accuracy", "BCR", "MCC",
      "sensitive-TPR",
      "sensitive-FPR",
 
-     "sensitive-accuracyDiff", 
+     "sensitive-accuracyDiff",
      "sensitive-calibration+Diff",
      "sensitive-TNRDiff",
      "sensitive-FNRDiff",
      "sensitive-calibration-Diff",
      "sensitive-TPRDiff",
      "sensitive-FPRDiff",
-     
+
      "TPR")
 
 load_dataset = function(name, attribute) {
@@ -414,7 +414,7 @@ load_dataset = function(name, attribute) {
   dataset$`sensitive-TPR`          = dataset[,str_c(attribute, "-TPR")]
   dataset$`sensitive-FNR`          = dataset[,str_c(attribute, "-FNR")]
   dataset$`sensitive-FPR`          = dataset[,str_c(attribute, "-FPR")]
-  
+
   dataset$`sensitive-accuracyDiff`     = dataset[,str_c(attribute, "-accuracyDiff")]
   dataset$`sensitive-calibration+Diff` = dataset[,str_c(attribute, "-calibration+Diff")]
   dataset$`sensitive-calibration-Diff` = dataset[,str_c(attribute, "-calibration-Diff")]
@@ -422,7 +422,7 @@ load_dataset = function(name, attribute) {
   dataset$`sensitive-TPRDiff`          = dataset[,str_c(attribute, "-TPRDiff")]
   dataset$`sensitive-FNRDiff`          = dataset[,str_c(attribute, "-FNRDiff")]
   dataset$`sensitive-FPRDiff`          = dataset[,str_c(attribute, "-FPRDiff")]
-  
+
   dataset$name = name
   dataset$attribute = attribute
   dataset[, c("name", "attribute", "algorithm", measure_names)]
@@ -435,37 +435,37 @@ make_correlation = function(dataset) {
 #dataset_name = "propublica-violent-recidivism"
 #sensitive_attr = "sex-race"
 
-#load_dataset(dataset_name, sensitive_attr) %>% 
-#  make_correlation(.) %>% 
-#  corrplot(., method="color", order="original", 
+#load_dataset(dataset_name, sensitive_attr) %>%
+#  make_correlation(.) %>%
+#  corrplot(., method="color", order="original",
 #           title=str_c(dataset_name, " - ", sensitive_attr, " - <all algorithms>"))
 ```
 
 ```{r}
 plot_with_title = function(m, title) {
-  corrplot(m, 
-           method="color", order="original", 
+  corrplot(m,
+           method="color", order="original",
            title=title,  
-           mar=c(0,0,3,0)) 
+           mar=c(0,0,3,0))
 }
 
 dataset = "propublica_violent_recidivism"
 sensitive_attribute = "race"
 
 make_many_plots = function(dataset, sensitive_attr) {
-  matrices = load_dataset(dataset, sensitive_attribute) %>% 
-    group_by(algorithm) %>% 
+  matrices = load_dataset(dataset, sensitive_attribute) %>%
+    group_by(algorithm) %>%
     do(the_matrix = make_correlation(.))
 
   for (i in 1:nrow(matrices)) {
     plot_with_title(
-      matrices[i,]$the_matrix[[1]], 
+      matrices[i,]$the_matrix[[1]],
       str_c(dataset, " - ", attribute, " - ", matrices[i,]$algorithm))
   }
   matrices
 }
 
-make_many_plots(dataset, sensitive_attribute)
+# make_many_plots(dataset, sensitive_attribute)
 ```
 
 ```{r}
@@ -481,7 +481,7 @@ write.csv(datasets, "all_measures_numerical-binsensitive.csv")
 
 ```{r}
 datasets %>%
-  group_by(name, algorithm) %>% 
-  do(mat = corrplot(make_correlation(.), method="color", order="original"), 
+  group_by(name, algorithm) %>%
+  do(mat = corrplot(make_correlation(.), method="color", order="original"),
            title=str_c("<all attributes> - <all algorithms>"))
 ```
