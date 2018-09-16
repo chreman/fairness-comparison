@@ -136,15 +136,19 @@ make_sensitivity_figure = function(name, var1, var2) {
 for (ds in datasets) {
   for (sens in sensitiveAttrs) {
     for (mt in metricTypes) {
-      p <- plot_specific(df, ds, sens, mt, "DIbinary", "accuracy")
-      ggsave(paste0("figures/", paste(ds,sens,mt, "SG", sep="_"), ".png"))
-      tryCatch({
-        pp <- make_sensitivity_figure(paste0("fairness/results/", paste(ds, sens, mt, sep="_"), ".csv"),
-                                      "DIbinary", "accuracy") + ggtitle(paste(ds, "dataset,", sens, "attribute"))
-        ggsave(paste0("figures/", paste(ds,sens,mt, "G", sep="_"), ".png"))
-      }, error=function(err){
-        print(paste("No results for", ds, sens, mt))
-      })
+      for (x_val in c('DIbinary', 'CV')) {
+        for (y_val in c('accuracy')) {
+          p <- plot_specific(df, ds, sens, mt, x_val, y_val)
+          ggsave(paste0("figures/", paste(ds,sens,mt, x_val, y_val, "SG", sep="_"), ".png"))
+          tryCatch({
+            pp <- make_sensitivity_figure(paste0("fairness/results/", paste(ds, sens, mt, sep="_"), ".csv"),
+                                          x_val, y_val) + ggtitle(paste(ds, "dataset,", sens, "attribute"))
+            ggsave(paste0("figures/", paste(ds,sens,mt, x_val, y_val, "G", sep="_"), ".png"))
+          }, error=function(err){
+            print(paste("No results for", ds, sens, mt))
+          })
+        }
+      }
     }
   }
 }
