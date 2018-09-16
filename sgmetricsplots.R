@@ -125,7 +125,7 @@ plot_specific <- function(df, ds, sens, mt, x_var, y_var) {
   }
 }
 
-make_sensitivity_figure = function(name, var1="DIbinary", var2="accuracy") {
+make_sensitivity_figure = function(name, var1, var2) {
   df = read.csv(name, check.names=TRUE) %>%
     filter(algorithm %in% algos_to_plot) %>%
     mutate(algorithm=recode(algorithm, ZafarFairness="Zafar")) # rename to Zafar for clarity
@@ -139,8 +139,9 @@ for (ds in datasets) {
       p <- plot_specific(df, ds, sens, mt, "DIbinary", "accuracy")
       ggsave(paste0("figures/", paste(ds,sens,mt, "SG", sep="_"), ".png"))
       tryCatch({
-        pp <- make_sensitivity_figure(paste0("fairness/results/", paste(ds, sens, mt, sep="_"), ".csv")) + ggtitle(paste(ds, "dataset,", sens, "attribute"))
-        ggsave(paste0("figures/", paste(ds,sens,mt, sep="_"), ".png"))
+        pp <- make_sensitivity_figure(paste0("fairness/results/", paste(ds, sens, mt, sep="_"), ".csv"),
+                                      "DIbinary", "accuracy") + ggtitle(paste(ds, "dataset,", sens, "attribute"))
+        ggsave(paste0("figures/", paste(ds,sens,mt, "G", sep="_"), ".png"))
       }, error=function(err){
         print(paste("No results for", ds, sens, mt))
       })
