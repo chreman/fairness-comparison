@@ -106,7 +106,9 @@ plot_rects_sensitivity_summary = function(basic_plot) {
 
 colnames <- c('run', 'dataset', 'algorithm', 'metricName', 'sensitiveAttr', 'metricType', 'sensitiveType', 'metric')
 df <- read.csv("results/sg_metrics/sg_metric_results.csv", header = FALSE, col.names = colnames, check.names = FALSE)
+df$sensitiveAttr <- factor(df$sensitiveAttr, level=c(levels(df$sensitiveAttr), "Race"))
 df$metric <- as.numeric(levels(df$metric))[df$metric]
+df[which(df$dataset=='ricci'),]$sensitiveAttr <- 'Race'
 df <- subset(df, dataset != '')
 df <- subset(df, metric <= 1)
 df <- subset(df, algorithm %in% algos_to_plot)
@@ -163,29 +165,47 @@ for (ds in datasets) {
   }
 }
 
-df <- read.csv("fairness/results/propublica-recidivism_sex_numerical.csv", check.names = FALSE)
-cols <- names(df)
-cols <- cols[which(unlist(lapply(cols, function(x){startsWith(x, "diff")})))]
-df <- df[cols]
-cols <- unlist(lapply(cols, gsub, pattern="diff:", replacement=""))
-cols1 <- unlist(lapply(cols, function(x){strsplit(x, "to")[[1]][1]}))
-cols2 <- unlist(lapply(cols, function(x){strsplit(x, "to")[[1]][2]}))
-metricName1 <- unlist(lapply(cols1, function(x){str_extract(x, "\\w+[-+]?$")}))
-metricName2 <- unlist(lapply(cols2, function(x){str_extract(x, "\\w+[-+]?$")}))
-sg1 <- mapply(gsub, pattern=paste0("-",metricName1), replacement="", x=cols1, USE.NAMES = FALSE)
-sg1 <- unlist(lapply(sg1, function(x){gsub("\\+", "", x)}))
-sg2 <- mapply(gsub, pattern=paste0("-",metricName2), replacement="", x=cols2, USE.NAMES = FALSE)
-sg2 <- unlist(lapply(sg2, function(x){gsub("\\+", "", x)}))
+make_subgroup_ratio_plot <- function(file) {
+  df <- read.csv(file, check.names = FALSE)
+  cols <- names(df)
+  cols <- cols[which(unlist(lapply(cols, function(x){startsWith(x, "diff")})))]
+  df <- df[cols]
+  cols <- unlist(lapply(cols, gsub, pattern="diff:", replacement=""))
+  cols1 <- unlist(lapply(cols, function(x){strsplit(x, "to")[[1]][1]}))
+  cols2 <- unlist(lapply(cols, function(x){strsplit(x, "to")[[1]][2]}))
+  metricName1 <- unlist(lapply(cols1, function(x){str_extract(x, "\\w+[-+]?$")}))
+  metricName2 <- unlist(lapply(cols2, function(x){str_extract(x, "\\w+[-+]?$")}))
+  sg1 <- mapply(gsub, pattern=paste0("-",metricName1), replacement="", x=cols1, USE.NAMES = FALSE)
+  sg1 <- unlist(lapply(sg1, function(x){gsub("\\+", "", x)}))
+  sg2 <- mapply(gsub, pattern=paste0("-",metricName2), replacement="", x=cols2, USE.NAMES = FALSE)
+  sg2 <- unlist(lapply(sg2, function(x){gsub("\\+", "", x)}))
+  
+  res <- cbind(sg1, sg2, metricName1, (t(as.data.frame(df))))
+  rownames(res) <- c()
+  res <- as.data.frame(res)
+  data <- melt(data = res, id.vars = c('sg1', 'sg2', 'metricName1'))
+  data <- data[c('sg1', 'sg2', 'metricName1', 'value')]
+  names(data) <- c('unprotected', 'protected', 'metricName', 'ratio')
+  data$ratio <- as.numeric(data$ratio)
+  p <- (ggplot(aes(y=ratio, x=metricName, fill = metricName), data=data)
+     + geom_boxplot()
+     + facet_wrap(vars(unprotected, protected), scales = "free_x", nrow = 2)
+     + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+     + ggtitle(paste(ds, "dataset,", "metric consistency across subgroups")))
+  return (p)
+}
 
-res <- cbind(sg1, sg2, metricName1, (t(as.data.frame(df))))
-rownames(res) <- c()
-res <- as.data.frame(res)
-data <- melt(data = res, id.vars = c('sg1', 'sg2', 'metricName1'))
-data <- data[c('sg1', 'sg2', 'metricName1', 'value')]
-names(data) <- c('unprotected', 'protected', 'metricName', 'ratio')
-data$ratio <- as.numeric(data$ratio)
-ggplot(aes(y=ratio, x=protected, fill = protected), data=head(data, 100))
-  + geom_boxplot()
-  + facet_grid(~ unprotected, scales = "free_x")
-  + theme(axis.text.x = element_text(angle = 90, hjust = 1))
-
+for (ds in datasets) {
+  for (sens in sensitiveAttrs) {
+    for (mt in metricTypes) {
+      tryCatch({
+        p <- make_subgroup_ratio_plot(paste0("fairness/results/", paste(ds, sens, mt, sep="_"), ".csv"))
+        ggsave(paste0("figures/", paste("metricConsistency", ds,sens,mt, sep="_"), ".png"),
+               width=10, height=7, units="in")
+      }, error=function(err){
+        print(err)
+        print(paste("No results for", ds, sens, mt))
+      })
+    }
+  }
+}
