@@ -8,6 +8,7 @@ library(corrplot)
 library(robust)
 library(purrr)
 library(reshape2)
+library(hclust)
 
 setwd("/home/chris/projects/fairness-comparison/")
 
@@ -107,8 +108,11 @@ plot_rects_sensitivity_summary = function(basic_plot) {
 colnames <- c('run', 'dataset', 'algorithm', 'metricName', 'sensitiveAttr', 'metricType', 'sensitiveType', 'metric')
 df <- read.csv("results/sg_metrics/sg_metric_results.csv", header = FALSE, col.names = colnames, check.names = FALSE)
 df$sensitiveAttr <- factor(df$sensitiveAttr, level=c(levels(df$sensitiveAttr), "Race"))
+df$sensitiveAttr <- factor(df$sensitiveAttr, level=c(levels(df$sensitiveAttr), "sex-race"))
 df$metric <- as.numeric(levels(df$metric))[df$metric]
 df[which(df$dataset=='ricci'),]$sensitiveAttr <- 'Race'
+df[which(df$dataset=='propublica-recidivism' & df$sensitiveAttr=='race-sex'),]$sensitiveAttr <- 'sex-race'
+df[which(df$dataset=='propublica-violent-recidivism' & df$sensitiveAttr=='race-sex'),]$sensitiveAttr <- 'sex-race'
 df <- subset(df, dataset != '')
 df <- subset(df, metric <= 1)
 df <- subset(df, algorithm %in% algos_to_plot)
@@ -208,4 +212,61 @@ for (ds in datasets) {
       })
     }
   }
+}
+# Get lower triangle of the correlation matrix
+get_lower_tri<-function(cormat){
+  cormat[upper.tri(cormat)] <- NA
+  return(cormat)
+}
+# Get upper triangle of the correlation matrix
+get_upper_tri <- function(cormat){
+  cormat[lower.tri(cormat)]<- NA
+  return(cormat)
+}
+reorder_cormat <- function(cormat){
+  # Use correlation between variables as distance
+  dd <- as.dist((1-cormat)/2)
+  hc <- hclust(dd)
+  cormat <-cormat[hc$order, hc$order]
+}
+make_corrplot <- function(ss) {
+  ss <- ss[,c('algorithm', 'metricName', 'sensitiveType', 'metric')]
+  cr <- cor(dcast(ss, algorithm+sensitiveType~metricName, mean)[3:12])
+  #cr <- get_upper_tri(cr)
+  cr <- reorder_cormat(cr)
+  mtcr <- melt(cr,na.rm = TRUE)
+  (ggplot(mtcr, aes(Var2, Var1, fill = value))
+    + geom_tile(color = "white")
+    + scale_fill_gradient2(low = "blue", high = "red", mid = "white", 
+                           midpoint = 0, limit = c(-1,1), space = "Lab", 
+                           name="Pearson\nCorrelation")
+    + theme_minimal() # minimal theme
+    + theme(axis.text.x = element_text(angle = 45, vjust = 1, 
+                                     size = 10, hjust = 1))
+    + theme(axis.text.y = element_text(angle = 45, vjust = 1, 
+                                       size = 10, hjust = 1))
+    + coord_fixed())
+}
+
+for (ds in datasets) {
+  for (sens in sensitiveAttrs) {
+    for (mt in metricTypes) {
+      tryCatch({
+        ss <- subset(df, dataset==ds & sensitiveAttr==sens & metricType==mt)
+        cp <- make_corrplot(ss)
+        cp + ggtitle(paste(ds, "dataset,", sens, "attribute"))
+        ggsave(paste0("figures/", paste("corrplot",ds,sens,mt, sep="_"), ".png"))
+      }, error=function(err){
+      print(err)
+      })
+    }
+  }
+  tryCatch({
+    ss <- subset(df, dataset==ds)
+    cp <- make_corrplot(ss)
+    cp + ggtitle(paste(ds, "dataset,"))
+    ggsave(paste0("figures/", paste("corrplot",ds, sep="_"), ".png"))
+  }, error=function(err){
+    print(err)
+  })
 }
