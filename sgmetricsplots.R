@@ -105,7 +105,7 @@ plot_rects_sensitivity_summary = function(basic_plot) {
 
 
 colnames <- c('run', 'dataset', 'algorithm', 'metricName', 'sensitiveAttr', 'metricType', 'sensitiveType', 'metric')
-df <- read.csv("results/sg_metrics/sg_metric_results.csv", header = FALSE, col.names = colnames)
+df <- read.csv("results/sg_metrics/sg_metric_results.csv", header = FALSE, col.names = colnames, check.names = FALSE)
 df$metric <- as.numeric(levels(df$metric))[df$metric]
 df <- subset(df, dataset != '')
 df <- subset(df, metric <= 1)
@@ -126,7 +126,7 @@ plot_specific <- function(df, ds, sens, mt, x_var, y_var) {
 }
 
 make_sensitivity_figure = function(name, var1, var2) {
-  df = read.csv(name, check.names=TRUE) %>%
+  df = read.csv(name, check.names=FALSE) %>%
     filter(algorithm %in% algos_to_plot) %>%
     mutate(algorithm=recode(algorithm, ZafarFairness="Zafar")) # rename to Zafar for clarity
   
@@ -136,8 +136,8 @@ make_sensitivity_figure = function(name, var1, var2) {
 for (ds in datasets) {
   for (sens in sensitiveAttrs) {
     for (mt in metricTypes) {
-      for (x_val in c('DIbinary', 'CV')) {
-        for (y_val in c('accuracy')) {
+      for (x_val in c('calibration+')) {
+        for (y_val in c('calibration-')) {
           p <- plot_specific(df, ds, sens, mt, x_val, y_val)
           ggsave(paste0("figures/", paste(ds,sens,mt, x_val, y_val, "SG", sep="_"), ".png"))
           tryCatch({
@@ -145,6 +145,16 @@ for (ds in datasets) {
                                           x_val, y_val) + ggtitle(paste(ds, "dataset,", sens, "attribute"))
             ggsave(paste0("figures/", paste(ds,sens,mt, x_val, y_val, "G", sep="_"), ".png"))
           }, error=function(err){
+            print(err)
+            print(paste("No results for", ds, sens, mt))
+          })
+          tryCatch({
+            pp <- make_sensitivity_figure(paste0("fairness/results/", paste(ds, sens, mt, sep="_"), ".csv"),
+                                          paste(sens, x_val, sep="-"),
+                                          paste(sens, y_val, sep="-")) + ggtitle(paste(ds, "dataset,", sens, "attribute"))
+            ggsave(paste0("figures/", paste(ds,sens,mt, paste(sens, x_val, y_val, "G", sep="_"), ".png")))
+          }, error=function(err){
+            print(err)
             print(paste("No results for", ds, sens, mt))
           })
         }
@@ -152,4 +162,30 @@ for (ds in datasets) {
     }
   }
 }
+
+df <- read.csv("fairness/results/propublica-recidivism_sex_numerical.csv", check.names = FALSE)
+cols <- names(df)
+cols <- cols[which(unlist(lapply(cols, function(x){startsWith(x, "diff")})))]
+df <- df[cols]
+cols <- unlist(lapply(cols, gsub, pattern="diff:", replacement=""))
+cols1 <- unlist(lapply(cols, function(x){strsplit(x, "to")[[1]][1]}))
+cols2 <- unlist(lapply(cols, function(x){strsplit(x, "to")[[1]][2]}))
+metricName1 <- unlist(lapply(cols1, function(x){str_extract(x, "\\w+[-+]?$")}))
+metricName2 <- unlist(lapply(cols2, function(x){str_extract(x, "\\w+[-+]?$")}))
+sg1 <- mapply(gsub, pattern=paste0("-",metricName1), replacement="", x=cols1, USE.NAMES = FALSE)
+sg1 <- unlist(lapply(sg1, function(x){gsub("\\+", "", x)}))
+sg2 <- mapply(gsub, pattern=paste0("-",metricName2), replacement="", x=cols2, USE.NAMES = FALSE)
+sg2 <- unlist(lapply(sg2, function(x){gsub("\\+", "", x)}))
+
+res <- cbind(sg1, sg2, metricName1, (t(as.data.frame(df))))
+rownames(res) <- c()
+res <- as.data.frame(res)
+data <- melt(data = res, id.vars = c('sg1', 'sg2', 'metricName1'))
+data <- data[c('sg1', 'sg2', 'metricName1', 'value')]
+names(data) <- c('unprotected', 'protected', 'metricName', 'ratio')
+data$ratio <- as.numeric(data$ratio)
+ggplot(aes(y=ratio, x=protected, fill = protected), data=head(data, 100))
+  + geom_boxplot()
+  + facet_grid(~ unprotected, scales = "free_x")
+  + theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
