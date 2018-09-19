@@ -271,10 +271,27 @@ for (ds in datasets) {
   })
 }
 
+lm_eqn <- function(df){
+  m <- lm(y ~ x, df);
+  eq <- substitute(italic(y) == a + b %.% italic(x)*","~~italic(r)^2~"="~r2, 
+                   list(a = format(coef(m)[1], digits = 2), 
+                        b = format(coef(m)[2], digits = 2), 
+                        r2 = format(summary(m)$r.squared, digits = 3)))
+  as.character(as.expression(eq));                 
+}
+
 for (ds in datasets) {
   ss <- subset(df, dataset==ds)
   ss <- ss[,c('metricName', 'sensitiveType', 'metric')]
-  sdf <- ddply(df3, .(metricName, sensitiveType), function(x) {data.frame(sd = sd(x$metric))})
+  sdf <- ddply(ss, .(metricName, sensitiveType), function(x) {data.frame(sd = sd(x$metric))})
   df2 <- read.csv(paste0("SGratios_", ds, ".csv"), colClasses=c("NULL", NA, NA, NA))
   df3 <- merge(sdf, df2, by="sensitiveType")
+  df3 <- df3[,c('metricName', 'sensitiveType', 'sd', 'ratio')]
+  #df3g <- df3 %>% group_by(metricName)
+  p <- (ggplot(df3, aes(y=sd, x=ratio, colour = metricName))
+        + geom_point()
+        + geom_smooth(method='lm', fill=NA, formula = y ~ poly(x, 2))
+  )
+  p + ggtitle(paste(ds, "dataset, size of subgroups vs. metric SD"))
+  ggsave(paste0("figures/", paste0("SG_corrsizeSD", ds, ".png")))
 }
