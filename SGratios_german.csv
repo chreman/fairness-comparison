@@ -1,0 +1,13 @@
+,ratio,sensitiveType
+0,0.69,male
+1,0.31,female
+2,0.851,adult
+3,0.149,youth
+4,0.625,male-adult
+5,0.065,male-youth
+6,0.226,female-adult
+7,0.084,female-youth
+8,0.625,adult-male
+9,0.226,adult-female
+10,0.065,youth-male
+11,0.084,youth-female

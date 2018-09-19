@@ -1,4 +1,5 @@
 import pandas as pd
+import itertools
 import os
 
 BASE_DIR = '/'.join(os.path.dirname(__file__).split('/')[0:-2])
@@ -145,23 +146,33 @@ class Data():
         and returns a dataframe with the probability mass of each subgroup.
         """
         df = self.load_raw_dataset()
+        df = self.data_specific_processing(df)
         sensitive_attrs = self.get_sensitive_attributes()
         subgroups = []
         if len(sensitive_attrs) == 1:
             for expr in df[sensitive_attrs[0]].unique():
                 tmp = {}
-                tmp[sensitive_attrs[0]] = expr
+                tmp['sensitiveType'] = expr
                 tmp['ratio'] = df[sensitive_attrs].where(df[sensitive_attrs[0]] == expr).count()[sensitive_attrs[0]]/len(df)
                 subgroups.append(tmp)
         if len(sensitive_attrs) == 2:
-            for expr1, expr2 in list(itertools.product(df[sensitive_attrs[0]].unique(),
-                                                       df[sensitive_attrs[1]].unique())):
+            for expr in df[sensitive_attrs[0]].unique():
                 tmp = {}
-                tmp[sensitive_attrs[0]] = expr1
-                tmp[sensitive_attrs[1]] = expr2
-                tmp['ratio'] = (df[sensitive_attrs].where(df[sensitive_attrs[0]] == expr1)
-                                                   .where(df[sensitive_attrs[1]] == expr2)
-                                                   .count()[sensitive_attrs[0]]/len(df))
+                tmp['sensitiveType'] = expr
+                tmp['ratio'] = df[sensitive_attrs].where(df[sensitive_attrs[0]] == expr).count()[sensitive_attrs[0]]/len(df)
                 subgroups.append(tmp)
+            for expr in df[sensitive_attrs[1]].unique():
+                tmp = {}
+                tmp['sensitiveType'] = expr
+                tmp['ratio'] = df[sensitive_attrs].where(df[sensitive_attrs[1]] == expr).count()[sensitive_attrs[1]]/len(df)
+                subgroups.append(tmp)
+            for perm in itertools.permutations(sensitive_attrs):
+                for expr1, expr2 in list(itertools.product(df[perm[0]].unique(),
+                                                           df[perm[1]].unique())):
+                    tmp = {}
+                    tmp['sensitiveType'] = "-".join([expr1, expr2])
+                    tmp['ratio'] = (df[(df[perm[0]] == expr1) & (df[perm[1]] == expr2)]
+                                        [sensitive_attrs]
+                                        .count()[perm[0]]/len(df))
+                    subgroups.append(tmp)
         return pd.DataFrame(subgroups)
-
