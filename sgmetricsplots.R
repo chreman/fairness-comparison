@@ -270,3 +270,11 @@ for (ds in datasets) {
     print(err)
   })
 }
+
+for (ds in datasets) {
+  ss <- subset(df, dataset==ds)
+  ss <- ss[,c('metricName', 'sensitiveType', 'metric')]
+  sdf <- ddply(df3, .(metricName, sensitiveType), function(x) {data.frame(sd = sd(x$metric))})
+  df2 <- read.csv(paste0("SGratios_", ds, ".csv"), colClasses=c("NULL", NA, NA, NA))
+  df3 <- merge(sdf, df2, by="sensitiveType")
+}
