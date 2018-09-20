@@ -146,41 +146,14 @@ for (ds in datasets) {
           ss <- subset(df, dataset==ds & sensitiveAttr==sens & metricType==mt)
           if (nrow(ss) == 0) next
           p <- plot_specific(ss, x_val, y_val)
-          p + ggtitle(paste(ds, "dataset,", sens, "attribute"))
-          ggsave(paste0("figures/", paste(ds,sens,mt, x_val, y_val, "SG", sep="_"), ".png"))
+          p + ggtitle(paste(ds, sens))
+          ggsave(paste0("figures/", paste(ds,sens,mt, x_val, y_val, "SG", sep="_"), ".png"), width=6, height=4, units='in')
         }
       }
     }
   }
 }
 
-for (ds in datasets) {
-  for (sens in sensitiveAttrs) {
-    for (mt in metricTypes) {
-      fname <- paste0("fairness/results/", paste(ds, sens, mt, sep="_"), ".csv")
-      tryCatch({
-        ss <- read.csv(fname, check.names = FALSE)
-        #print(paste("success:", fname))
-      }, error=function(err){
-        ss <- NULL
-        #print(paste(err, fname))
-      })
-      if (is.null(ss)) next
-      for (x_val in XVALS) {
-        for (y_val in YVALS) {
-          tryCatch({
-            sss <- ss[, c('algorithm', x_val, y_val)]
-            pp <- (make_sensitivity_figure(sss, x_val, y_val)
-                   + ggtitle(paste(ds, "dataset,", sens, "attribute")))
-            ggsave(paste0("figures/", paste(ds,sens,mt, x_val, y_val, "G", sep="_"), ".png"))
-          }, error=function(err){
-            print(paste(err, x_val, y_val, ds, sens, mt))
-          })
-        }
-      }
-    }
-  }
-}
 
 make_subgroup_ratio_plot <- function(file) {
   df <- read.csv(file, check.names = FALSE)
