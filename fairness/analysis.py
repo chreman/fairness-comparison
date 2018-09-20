@@ -42,17 +42,17 @@ GRAPHS = [('DIbinary', 'accuracy'), ('sex-TPR', 'sex-calibration-'),
 # GRAPHS = 'all'
 
 def run(dataset = get_dataset_names(), graphs = GRAPHS):
-    for dataset_obj in DATASETS:
-        if not dataset_obj.get_dataset_name() in dataset:
-            continue
-
-        print("\nGenerating graphs for dataset:" + dataset_obj.get_dataset_name())
-        for sensitive in dataset_obj.get_sensitive_attributes_with_joint():
-            for tag in TAGS:
-                print("    type:" + tag)
-                filename = dataset_obj.get_results_filename(sensitive, tag)
-                make_all_graphs(filename, graphs)
-    print("Generating additional figures in R...")
+    # for dataset_obj in DATASETS:
+    #     if not dataset_obj.get_dataset_name() in dataset:
+    #         continue
+    #
+    #     print("\nGenerating graphs for dataset:" + dataset_obj.get_dataset_name())
+    #     for sensitive in dataset_obj.get_sensitive_attributes_with_joint():
+    #         for tag in TAGS:
+    #             print("    type:" + tag)
+    #             filename = dataset_obj.get_results_filename(sensitive, tag)
+    #             make_all_graphs(filename, graphs)
+    # print("Generating additional figures in R...")
     subprocess.run(["Rscript",
                     "fairness/results/generate-report.R"])
 
