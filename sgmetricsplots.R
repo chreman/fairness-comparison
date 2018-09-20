@@ -9,6 +9,7 @@ library(robust)
 library(purrr)
 library(reshape2)
 library(hclust)
+library(plyr)
 
 setwd("/home/chris/projects/fairness-comparison/")
 
@@ -123,45 +124,57 @@ metricNames <- unique(df$metricName)
 metricTypes <- unique(df$metricType)
 sensitiveAttrs <- unique(df$sensitiveAttr)
 
-plot_specific <- function(df, ds, sens, mt, x_var, y_var) {
-  ss <- subset(df, dataset==ds & sensitiveAttr==sens & metricType==mt)
-  if (nrow(ss) > 0) {
-    p <- plot_sensitivity(ss, x_var, y_var) + ggtitle(paste(ds, "dataset,", sens, "attribute")) + xlim(-0, 1) + ylim(-0, 1)
+plot_specific <- function(ss, x_var, y_var) {
+  p <- plot_sensitivity(ss, x_var, y_var) + xlim(-0, 1) + ylim(-0, 1)
   return(p)
-  }
 }
 
-make_sensitivity_figure = function(name, var1, var2) {
-  df = read.csv(name, check.names=FALSE) %>%
+make_sensitivity_figure = function(ss, var1, var2) {
+  df = ss %>%
     filter(algorithm %in% algos_to_plot) %>%
     mutate(algorithm=recode(algorithm, ZafarFairness="Zafar")) # rename to Zafar for clarity
   
   plot_sensitivity_old(df, var1, var2)
 }
+XVALS <- c('DIbinary', 'calibration+', 'CV')
+YVALS <- c('accuracy', 'calibration-', 'BCR')
+for (ds in datasets) {
+  for (sens in sensitiveAttrs) {
+    for (mt in metricTypes) {
+      for (x_val in XVALS) {
+        for (y_val in YVALS) {
+          ss <- subset(df, dataset==ds & sensitiveAttr==sens & metricType==mt)
+          if (nrow(ss) == 0) next
+          p <- plot_specific(ss, ds, sens, mt, x_val, y_val)
+          p + ggtitle(paste(ds, "dataset,", sens, "attribute"))
+          ggsave(paste0("figures/", paste(ds,sens,mt, x_val, y_val, "SG", sep="_"), ".png"))
+        }
+      }
+    }
+  }
+}
 
 for (ds in datasets) {
   for (sens in sensitiveAttrs) {
     for (mt in metricTypes) {
-      for (x_val in c('calibration+')) {
-        for (y_val in c('calibration-')) {
-          p <- plot_specific(df, ds, sens, mt, x_val, y_val)
-          ggsave(paste0("figures/", paste(ds,sens,mt, x_val, y_val, "SG", sep="_"), ".png"))
+      fname <- paste0("fairness/results/", paste(ds, sens, mt, sep="_"), ".csv")
+      tryCatch({
+        ss <- read.csv(fname, check.names = FALSE)
+        #print(paste("success:", fname))
+      }, error=function(err){
+        ss <- NULL
+        #print(paste(err, fname))
+      })
+      if (is.null(ss)) next
+      for (x_val in XVALS) {
+        for (y_val in YVALS) {
           tryCatch({
-            pp <- make_sensitivity_figure(paste0("fairness/results/", paste(ds, sens, mt, sep="_"), ".csv"),
-                                          x_val, y_val) + ggtitle(paste(ds, "dataset,", sens, "attribute"))
+            sss <- ss[, c('algorithm', x_val, y_val)]
+            pp <- (make_sensitivity_figure(sss, x_val, y_val)
+                   + ggtitle(paste(ds, "dataset,", sens, "attribute")))
             ggsave(paste0("figures/", paste(ds,sens,mt, x_val, y_val, "G", sep="_"), ".png"))
           }, error=function(err){
-            print(err)
-            print(paste("No results for", ds, sens, mt))
-          })
-          tryCatch({
-            pp <- make_sensitivity_figure(paste0("fairness/results/", paste(ds, sens, mt, sep="_"), ".csv"),
-                                          paste(sens, x_val, sep="-"),
-                                          paste(sens, y_val, sep="-")) + ggtitle(paste(ds, "dataset,", sens, "attribute"))
-            ggsave(paste0("figures/", paste(ds,sens,mt, paste(sens, x_val, y_val, "G", sep="_"), ".png")))
-          }, error=function(err){
-            print(err)
-            print(paste("No results for", ds, sens, mt))
+            print(paste(err, x_val, y_val, ds, sens, mt))
           })
         }
       }
@@ -195,7 +208,7 @@ make_subgroup_ratio_plot <- function(file) {
      + geom_boxplot()
      + facet_wrap(vars(unprotected, protected), scales = "free_x", nrow = 2)
      + theme(axis.text.x = element_text(angle = 90, hjust = 1))
-     + ggtitle(paste(ds, "dataset,", "metric consistency across subgroups")))
+     )
   return (p)
 }
 
@@ -204,6 +217,7 @@ for (ds in datasets) {
     for (mt in metricTypes) {
       tryCatch({
         p <- make_subgroup_ratio_plot(paste0("fairness/results/", paste(ds, sens, mt, sep="_"), ".csv"))
+        p + ggtitle(paste(ds, "dataset,", "metric consistency across subgroups,", sens, mt))
         ggsave(paste0("figures/", paste("metricConsistency", ds,sens,mt, sep="_"), ".png"),
                width=10, height=7, units="in")
       }, error=function(err){
@@ -291,7 +305,9 @@ for (ds in datasets) {
   p <- (ggplot(df3, aes(y=sd, x=ratio, colour = metricName))
         + geom_point()
         + geom_smooth(method='lm', fill=NA, formula = y ~ poly(x, 2))
+        + xlab("Probability mass")
+        + ylab("standard deviation of metrics")
   )
-  p + ggtitle(paste(ds, "dataset, size of subgroups vs. metric SD"))
-  ggsave(paste0("figures/", paste0("SG_corrsizeSD", ds, ".png")))
+  p + ggtitle(paste(ds, "dataset, probability mass of subgroups vs. standard deviation of metrics"))
+  ggsave(paste0("figures/", paste0("SG_corr-size-SD_", ds, ".png")))
 }
