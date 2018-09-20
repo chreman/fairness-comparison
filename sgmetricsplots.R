@@ -145,7 +145,7 @@ for (ds in datasets) {
         for (y_val in YVALS) {
           ss <- subset(df, dataset==ds & sensitiveAttr==sens & metricType==mt)
           if (nrow(ss) == 0) next
-          p <- plot_specific(ss, ds, sens, mt, x_val, y_val)
+          p <- plot_specific(ss, x_val, y_val)
           p + ggtitle(paste(ds, "dataset,", sens, "attribute"))
           ggsave(paste0("figures/", paste(ds,sens,mt, x_val, y_val, "SG", sep="_"), ".png"))
         }
