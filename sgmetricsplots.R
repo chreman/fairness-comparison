@@ -153,9 +153,12 @@ for (ds in datasets) {
     }
   }
 }
+get_sg_size <- function(ds){
+  sg_sizes <- read.csv(paste0("SGratios_", ds, ".csv"), col.names = c('index', 'pm_mass', 'protected'))
+  return (sg_sizes)
+}
 
-
-make_subgroup_ratio_plot <- function(file) {
+make_subgroup_ratio_plot <- function(file, ds) {
   df <- read.csv(file, check.names = FALSE)
   cols <- names(df)
   cols <- cols[which(unlist(lapply(cols, function(x){startsWith(x, "diff")})))]
@@ -177,9 +180,14 @@ make_subgroup_ratio_plot <- function(file) {
   data <- data[c('sg1', 'sg2', 'metricName1', 'value')]
   names(data) <- c('unprotected', 'protected', 'metricName', 'ratio')
   data$ratio <- as.numeric(data$ratio)
+  sg_size <- get_sg_size(ds)
+  sg_size$pm_mass <- sprintf(sg_size$pm_mass, fmt = '%#.3f')
+  lb <- mapply(paste, sg_size$protected, sg_size$pm_mass)
+  names(lb) <- sg_size$protected
+  data <- join(data, sg_size, by='protected')
   p <- (ggplot(aes(y=ratio, x=metricName, fill = metricName), data=data)
      + geom_boxplot()
-     + facet_wrap(vars(unprotected, protected), scales = "free_x", nrow = 2)
+     + facet_wrap(vars(unprotected, protected), scales = "free_x", nrow = 3, labeller = labeller(~protected + unprotected, unprotected = lb, protected=lb))
      + theme(axis.text.x = element_text(angle = 90, hjust = 1))
      )
   return (p)
@@ -189,10 +197,10 @@ for (ds in datasets) {
   for (sens in sensitiveAttrs) {
     for (mt in metricTypes) {
       tryCatch({
-        p <- make_subgroup_ratio_plot(paste0("fairness/results/", paste(ds, sens, mt, sep="_"), ".csv"))
-        p + ggtitle(paste(ds, "dataset,", "metric consistency across subgroups,", sens, mt))
+        p <- make_subgroup_ratio_plot(paste0("fairness/results/", paste(ds, sens, mt, sep="_"), ".csv"), ds)
+        #p + ggtitle(paste(ds, "dataset,", "metric consistency across subgroups,", sens, mt))
         ggsave(paste0("figures/", paste("metricConsistency", ds,sens,mt, sep="_"), ".png"),
-               width=10, height=7, units="in")
+               width=8, height=8, units="in")
       }, error=function(err){
         print(err)
         print(paste("No results for", ds, sens, mt))
@@ -200,6 +208,8 @@ for (ds in datasets) {
     }
   }
 }
+
+
 # Get lower triangle of the correlation matrix
 get_lower_tri<-function(cormat){
   cormat[upper.tri(cormat)] <- NA
@@ -284,8 +294,8 @@ for (ds in datasets) {
         + geom_smooth(method='lm', formula = y ~ poly(x, 2))
         + xlab("Probability mass")
         + ylab("standard deviation of metrics")
-        + xlim(-0.05, 0.8) + ylim(-0.05, 0.8)
+        + xlim(-0.05, 0.8) + ylim(-0.05, 0.6)
   )
-  p + ggtitle(paste(ds, "dataset, probability mass of subgroups vs. standard deviation of metrics")) + theme(plot.title = element_text(size=10))
-  ggsave(paste0("figures/", paste0("SG_corr-size-SD_", ds, ".png")), width=6, height=4, units="in")
+  p + theme(plot.title = element_text(size=10))
+  ggsave(paste0("figures/", paste0("SG_corr-size-SD_", ds, ".png")), width=5, height=3.5, units="in")
 }
