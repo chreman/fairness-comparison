@@ -146,7 +146,7 @@ for (ds in datasets) {
           ss <- subset(df, dataset==ds & sensitiveAttr==sens & metricType==mt)
           if (nrow(ss) == 0) next
           p <- plot_specific(ss, x_val, y_val)
-          p + ggtitle(paste(ds, sens))
+          p + ggtitle(paste(ds, sens, mt, "- Subgroup metrics"))
           ggsave(paste0("figures/", paste(ds,sens,mt, x_val, y_val, "SG", sep="_"), ".png"), width=6, height=4, units='in')
         }
       }
@@ -219,6 +219,7 @@ reorder_cormat <- function(cormat){
 make_corrplot <- function(ss) {
   ss <- ss[,c('algorithm', 'metricName', 'sensitiveType', 'metric')]
   cr <- cor(dcast(ss, algorithm+sensitiveType~metricName, mean)[3:12])
+  cr[is.na(cr)] <- 0
   #cr <- get_upper_tri(cr)
   cr <- reorder_cormat(cr)
   mtcr <- melt(cr,na.rm = TRUE)
@@ -232,6 +233,7 @@ make_corrplot <- function(ss) {
                                      size = 10, hjust = 1))
     + theme(axis.text.y = element_text(angle = 45, vjust = 1, 
                                        size = 10, hjust = 1))
+    + theme(axis.title.x=element_blank(), axis.title.y=element_blank())
     + coord_fixed())
 }
 
@@ -240,9 +242,11 @@ for (ds in datasets) {
     for (mt in metricTypes) {
       tryCatch({
         ss <- subset(df, dataset==ds & sensitiveAttr==sens & metricType==mt)
-        cp <- make_corrplot(ss)
-        cp + ggtitle(paste(ds, "dataset,", sens, "attribute"))
-        ggsave(paste0("figures/", paste("corrplot",ds,sens,mt, sep="_"), ".png"))
+        cp <- (make_corrplot(ss)
+               #+ ggtitle(paste(ds, "dataset,", sens, "attribute"))
+               + theme(plot.margin= margin(0,0,0,0))
+               )
+        ggsave(paste0("figures/", paste("corrplot",ds,sens,mt, sep="_"), ".png"), width=4.3, height=3.7, units="in")
       }, error=function(err){
       print(err)
       })
@@ -277,10 +281,11 @@ for (ds in datasets) {
   #df3g <- df3 %>% group_by(metricName)
   p <- (ggplot(df3, aes(y=sd, x=ratio, colour = metricName))
         + geom_point()
-        + geom_smooth(method='lm', fill=NA, formula = y ~ poly(x, 2))
+        + geom_smooth(method='lm', formula = y ~ poly(x, 2))
         + xlab("Probability mass")
         + ylab("standard deviation of metrics")
+        + xlim(-0.05, 0.8) + ylim(-0.05, 0.8)
   )
-  p + ggtitle(paste(ds, "dataset, probability mass of subgroups vs. standard deviation of metrics"))
-  ggsave(paste0("figures/", paste0("SG_corr-size-SD_", ds, ".png")))
+  p + ggtitle(paste(ds, "dataset, probability mass of subgroups vs. standard deviation of metrics")) + theme(plot.title = element_text(size=10))
+  ggsave(paste0("figures/", paste0("SG_corr-size-SD_", ds, ".png")), width=6, height=4, units="in")
 }
