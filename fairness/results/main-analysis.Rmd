@@ -170,11 +170,21 @@ make_sensitivity_figure = function(name, var1="DIbinary", var2="accuracy") {
   p <- plot_sensitivity(df, var1, var2)
   p  + xlim(-0, 1) + ylim(-0, 1)
 }
-dsets <- c('ricci_Race_numerical',
-           'adult_race_numerical', 'adult_sex_numerical', 'adult_race-sex_numerical',
-           'german_sex_numerical', 'german_age_numerical', 'german_sex-age_numerical',
-           'propublica-recidivism_race_numerical', 'propublica-recidivism_sex_numerical', 'propublica-recidivism_sex-race_numerical',
-           'propublica-violent-recidivism_race_numerical', 'propublica-violent-recidivism_sex_numerical', 'propublica-violent-recidivism_sex-race_numerical')
+dsets <- c(
+           # 'ricci_Race_numerical',
+           # 'adult_race_numerical',
+           # 'adult_sex_numerical',
+           # 'adult_race-sex_numerical',
+           'german_sex_numerical',
+           'german_age_numerical',
+           'german_sex-age_numerical',
+           'propublica-recidivism_race_numerical',
+           'propublica-recidivism_sex_numerical',
+           'propublica-recidivism_sex-race_numerical'
+           # 'propublica-violent-recidivism_race_numerical',
+           # 'propublica-violent-recidivism_sex_numerical',
+           # 'propublica-violent-recidivism_sex-race_numerical'
+         )
 XVALS <- c('DIbinary', 'calibration+', 'CV')
 YVALS <- c('accuracy', 'calibration-', 'BCR')
 for (ds in dsets) {
@@ -182,7 +192,7 @@ for (ds in dsets) {
     for (y_val in YVALS) {
       tryCatch({
         p = make_sensitivity_figure(paste0(ds, ".csv"), x_val, y_val) +
-          ggtitle(gsub("_", " ", ds))
+          ggtitle(paste(gsub("_", " ", ds), "- Group metrics"))
         ggsave(paste0("../../figures/", paste(ds, x_val, y_val, "G", sep="_"), ".png"), width=6, height=4, units='in')
       }, error=function(err){
         print(err)

@@ -118,11 +118,33 @@ df <- subset(df, dataset != '')
 df <- subset(df, metric <= 1)
 df <- subset(df, algorithm %in% algos_to_plot)
 df <- mutate(df, algorithm=recode(algorithm, ZafarFairness="Zafar")) # rename to Zafar for clarity
-datasets <- unique(df$dataset)
+datasets <- c('german', 'propublica-recidivism')
 algorithms <- unique(df$algorithm)
 metricNames <- unique(df$metricName)
-metricTypes <- unique(df$metricType)
+metricTypes <- c('numerical')
 sensitiveAttrs <- unique(df$sensitiveAttr)
+
+
+for (ds in datasets) {
+  ss <- subset(df, dataset==ds)
+  ss <- ss[,c('metricName', 'sensitiveType', 'metric')]
+  sdf <- ddply(ss, .(metricName, sensitiveType), function(x) {data.frame(sd = sd(x$metric))})
+  df2 <- read.csv(paste0("SGratios_", ds, ".csv"), colClasses=c("NULL", NA, NA, NA))
+  df3 <- merge(sdf, df2, by="sensitiveType")
+  df3 <- df3[,c('metricName', 'sensitiveType', 'sd', 'ratio')]
+  #df3g <- df3 %>% group_by(metricName)
+  p <- (ggplot(df3, aes(y=sd, x=ratio, colour = metricName))
+        + geom_point()
+        + geom_smooth(method='lm', formula = y ~ poly(x, 2))
+        + xlab("Probability mass")
+        + ylab("standard deviation of metrics")
+        + xlim(-0.05, 0.7) + ylim(-0.05, 0.6)
+  )
+  p + theme(plot.title = element_text(size=10))
+  ggsave(paste0("figures/", paste0("SG_corr-size-SD_", ds, ".png")), width=5, height=3.5, units="in")
+}
+
+
 
 plot_specific <- function(ss, x_var, y_var) {
   p <- plot_sensitivity(ss, x_var, y_var) + xlim(-0, 1) + ylim(-0, 1)
@@ -158,8 +180,12 @@ get_sg_size <- function(ds){
   return (sg_sizes)
 }
 
-make_subgroup_ratio_plot <- function(file, ds) {
-  df <- read.csv(file, check.names = FALSE)
+get_sens_expressions <- function(df, ds, sens, mt){
+  ss <- subset(df, df$sensitiveAttr == sens & df$dataset == ds & df$metricType == mt)
+  return (unique(ss$sensitiveType))
+}
+
+make_subgroup_ratio_plot <- function(df, ds, validexpr) {
   cols <- names(df)
   cols <- cols[which(unlist(lapply(cols, function(x){startsWith(x, "diff")})))]
   df <- df[cols]
@@ -180,6 +206,7 @@ make_subgroup_ratio_plot <- function(file, ds) {
   data <- data[c('sg1', 'sg2', 'metricName1', 'value')]
   names(data) <- c('unprotected', 'protected', 'metricName', 'ratio')
   data$ratio <- as.numeric(data$ratio)
+  data <- subset(data, data$protected %in% validexpr)
   sg_size <- get_sg_size(ds)
   sg_size$pm_mass <- sprintf(sg_size$pm_mass, fmt = '%#.3f')
   lb <- mapply(paste, sg_size$protected, sg_size$pm_mass)
@@ -187,7 +214,7 @@ make_subgroup_ratio_plot <- function(file, ds) {
   data <- join(data, sg_size, by='protected')
   p <- (ggplot(aes(y=ratio, x=metricName, fill = metricName), data=data)
      + geom_boxplot()
-     + facet_wrap(vars(unprotected, protected), scales = "free_x", nrow = 3, labeller = labeller(~protected + unprotected, unprotected = lb, protected=lb))
+     + facet_wrap(vars(unprotected, protected), scales = "free_x", nrow = round(sqrt(length(validexpr))), labeller = labeller(~protected + unprotected, unprotected = lb, protected=lb))
      + theme(axis.text.x = element_text(angle = 90, hjust = 1))
      )
   return (p)
@@ -197,10 +224,13 @@ for (ds in datasets) {
   for (sens in sensitiveAttrs) {
     for (mt in metricTypes) {
       tryCatch({
-        p <- make_subgroup_ratio_plot(paste0("fairness/results/", paste(ds, sens, mt, sep="_"), ".csv"), ds)
+        ss <- read.csv(paste0("fairness/results/", paste(ds, sens, mt, sep="_"), ".csv"), check.names = FALSE)
+        validexpr <- get_sens_expressions(df, ds, sens, mt)
+        p <- make_subgroup_ratio_plot(ss, ds, validexpr)
         #p + ggtitle(paste(ds, "dataset,", "metric consistency across subgroups,", sens, mt))
         ggsave(paste0("figures/", paste("metricConsistency", ds,sens,mt, sep="_"), ".png"),
-               width=8, height=8, units="in")
+               width=3*round(sqrt(length(validexpr)))+1,
+               height=3*round(sqrt(length(validexpr)))+1, units="in")
       }, error=function(err){
         print(err)
         print(paste("No results for", ds, sens, mt))
@@ -270,32 +300,4 @@ for (ds in datasets) {
   }, error=function(err){
     print(err)
   })
-}
-
-lm_eqn <- function(df){
-  m <- lm(y ~ x, df);
-  eq <- substitute(italic(y) == a + b %.% italic(x)*","~~italic(r)^2~"="~r2, 
-                   list(a = format(coef(m)[1], digits = 2), 
-                        b = format(coef(m)[2], digits = 2), 
-                        r2 = format(summary(m)$r.squared, digits = 3)))
-  as.character(as.expression(eq));                 
-}
-
-for (ds in datasets) {
-  ss <- subset(df, dataset==ds)
-  ss <- ss[,c('metricName', 'sensitiveType', 'metric')]
-  sdf <- ddply(ss, .(metricName, sensitiveType), function(x) {data.frame(sd = sd(x$metric))})
-  df2 <- read.csv(paste0("SGratios_", ds, ".csv"), colClasses=c("NULL", NA, NA, NA))
-  df3 <- merge(sdf, df2, by="sensitiveType")
-  df3 <- df3[,c('metricName', 'sensitiveType', 'sd', 'ratio')]
-  #df3g <- df3 %>% group_by(metricName)
-  p <- (ggplot(df3, aes(y=sd, x=ratio, colour = metricName))
-        + geom_point()
-        + geom_smooth(method='lm', formula = y ~ poly(x, 2))
-        + xlab("Probability mass")
-        + ylab("standard deviation of metrics")
-        + xlim(-0.05, 0.8) + ylim(-0.05, 0.6)
-  )
-  p + theme(plot.title = element_text(size=10))
-  ggsave(paste0("figures/", paste0("SG_corr-size-SD_", ds, ".png")), width=5, height=3.5, units="in")
 }
