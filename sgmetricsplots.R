@@ -168,13 +168,15 @@ for (ds in datasets) {
           ss <- subset(df, dataset==ds & sensitiveAttr==sens & metricType==mt)
           if (nrow(ss) == 0) next
           p <- plot_specific(ss, x_val, y_val)
-          p + ggtitle(paste(ds, sens, mt, "- Subgroup metrics"))
+          #p + ggtitle(paste(ds, sens, mt, "- Subgroup metrics"))
           ggsave(paste0("figures/", paste(ds,sens,mt, x_val, y_val, "SG", sep="_"), ".png"), width=6, height=4, units='in')
         }
       }
     }
   }
 }
+
+
 get_sg_size <- function(ds){
   sg_sizes <- read.csv(paste0("SGratios_", ds, ".csv"), col.names = c('index', 'pm_mass', 'protected'))
   return (sg_sizes)
