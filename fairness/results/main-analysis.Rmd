@@ -191,8 +191,9 @@ for (ds in dsets) {
   for (x_val in XVALS) {
     for (y_val in YVALS) {
       tryCatch({
-        p = make_sensitivity_figure(paste0(ds, ".csv"), x_val, y_val) +
-          ggtitle(paste(gsub("_", " ", ds), "- Group metrics"))
+        p = (make_sensitivity_figure(paste0(ds, ".csv"), x_val, y_val)
+             # + ggtitle(paste(gsub("_", " ", ds), "- Group metrics"))
+           )
         ggsave(paste0("../../figures/", paste(ds, x_val, y_val, "G", sep="_"), ".png"), width=6, height=4, units='in')
       }, error=function(err){
         print(err)
